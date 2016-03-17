@@ -93,4 +93,4 @@ def wait_rate_limit_reset():
     now = int(time.time())
     wait = GITHUB.x_ratelimit_reset - now + 5
     logger.info("Waiting rate limit reset in %s seconds", wait)
-    time.sleep(wait)
+    time.sleep(wait if wait > 0 else 0)
