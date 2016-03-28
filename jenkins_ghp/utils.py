@@ -95,4 +95,4 @@ def wait_rate_limit_reset():
         # This is rate limit GHP threshold. Overwrite reset timestamp.
         wait = 2100
     logger.info("Waiting rate limit reset in %s seconds", wait)
-    time.sleep(wait)
+    time.sleep(wait if wait > 0 else 0)
