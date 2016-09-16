@@ -53,7 +53,7 @@ def list_repositories(with_settings=False):
             try:
                 repository = Repository.from_remote(remote)
             except Exception as e:
-                logger.warn("Failed to fetch repo %s: %s", repository, e)
+                logger.warn("Failed to fetch repo %s: %s", remote, e)
                 continue
 
             if repository not in repositories:
