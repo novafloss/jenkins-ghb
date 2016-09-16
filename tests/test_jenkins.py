@@ -1,10 +1,10 @@
 from unittest.mock import Mock, patch
 
 
-@patch('jenkins_ghp.jenkins.match')
-@patch('jenkins_ghp.jenkins.SETTINGS')
+@patch('jenkins_epo.jenkins.match')
+@patch('jenkins_epo.jenkins.SETTINGS')
 def test_managed_no_scm(SETTINGS, match):
-    from jenkins_ghp.jenkins import FreestyleJob, NotConfiguredSCM
+    from jenkins_epo.jenkins import FreestyleJob, NotConfiguredSCM
 
     match.return_value = False
 
@@ -17,9 +17,9 @@ def test_managed_no_scm(SETTINGS, match):
     assert not job.managed
 
 
-@patch('jenkins_ghp.jenkins.SETTINGS')
+@patch('jenkins_epo.jenkins.SETTINGS')
 def test_freestyle_build(SETTINGS):
-    from jenkins_ghp.jenkins import FreestyleJob
+    from jenkins_epo.jenkins import FreestyleJob
 
     api_instance = Mock()
     api_instance.name = 'freestyle'
@@ -35,14 +35,37 @@ def test_freestyle_build(SETTINGS):
     job = FreestyleJob(api_instance)
     job._node_param = 'NODE'
 
-    SETTINGS.GHP_DRY_RUN = 0
+    SETTINGS.DRY_RUN = 0
     job.build(pr, spec, 'freestyle')
 
     assert api_instance.invoke.mock_calls
 
 
+@patch('jenkins_epo.jenkins.SETTINGS')
+def test_freestyle_build_dry(SETTINGS):
+    from jenkins_epo.jenkins import FreestyleJob
+
+    api_instance = Mock()
+    api_instance.name = 'freestyle'
+    xml = api_instance._get_config_element_tree.return_value
+    xml.findall.return_value = []
+
+    pr = Mock()
+    spec = Mock()
+    spec.config = {}
+    job = FreestyleJob(api_instance)
+    job._node_param = None
+    job._revision_param = None
+
+    SETTINGS.DRY_RUN = 1
+
+    job.build(pr, spec, 'freestyle')
+
+    assert not api_instance.invoke.mock_calls
+
+
 def test_freestyle_node_param():
-    from jenkins_ghp.jenkins import FreestyleJob
+    from jenkins_epo.jenkins import FreestyleJob
 
     api_instance = Mock(spec=['_get_config_element_tree', 'get_params'])
     api_instance.name = 'freestyle'
@@ -58,7 +81,7 @@ def test_freestyle_node_param():
 
 
 def test_matrix_combination_param():
-    from jenkins_ghp.jenkins import MatrixJob
+    from jenkins_epo.jenkins import MatrixJob
 
     api_instance = Mock(spec=['_get_config_element_tree', 'get_params'])
     api_instance.name = 'matrix'
@@ -75,7 +98,7 @@ def test_matrix_combination_param():
 
 
 def test_matrix_node_axis():
-    from jenkins_ghp.jenkins import MatrixJob
+    from jenkins_epo.jenkins import MatrixJob
 
     api_instance = Mock(spec=['_get_config_element_tree', 'get_params'])
     api_instance.name = 'matrix'
@@ -94,7 +117,7 @@ def test_matrix_node_axis():
 
 def test_matrix_list_context_node():
     from jenkins_yml import Job
-    from jenkins_ghp.jenkins import MatrixJob
+    from jenkins_epo.jenkins import MatrixJob
 
     api_instance = Mock(spec=['_get_config_element_tree', 'get_params'])
     api_instance.name = 'matrix'
@@ -124,7 +147,7 @@ def test_matrix_list_context_node():
 
 def test_matrix_list_context_node_axis_only():
     from jenkins_yml import Job
-    from jenkins_ghp.jenkins import MatrixJob
+    from jenkins_epo.jenkins import MatrixJob
 
     api_instance = Mock(spec=['_get_config_element_tree', 'get_params'])
     api_instance.name = 'matrix'
@@ -147,10 +170,10 @@ def test_matrix_list_context_node_axis_only():
     assert 2 == len(contexts)
 
 
-@patch('jenkins_ghp.jenkins.JobSpec')
+@patch('jenkins_epo.jenkins.JobSpec')
 def test_matrix_list_context_superset(JobSpec):
     from jenkins_yml import Job
-    from jenkins_ghp.jenkins import MatrixJob
+    from jenkins_epo.jenkins import MatrixJob
 
     api_instance = Mock(spec=['_get_config_element_tree', 'get_params'])
     api_instance.name = 'matrix'
@@ -181,33 +204,86 @@ def test_matrix_list_context_superset(JobSpec):
     assert 2 == len(contexts)
 
 
-@patch('jenkins_ghp.jenkins.Job.factory')
-@patch('jenkins_ghp.jenkins.SETTINGS')
+@patch('jenkins_epo.jenkins.SETTINGS')
+@patch('jenkins_epo.jenkins.requests.post')
+def test_matrix_build(post, SETTINGS):
+    from jenkins_epo.jenkins import MatrixJob, JobSpec
+
+    SETTINGS.DRY_RUN = 0
+
+    api_instance = Mock()
+    api_instance.name = 'matrix'
+    api_instance._data = {'url': 'https://jenkins/job'}
+    xml = api_instance._get_config_element_tree.return_value
+    xml.findall.return_value = []
+
+    spec = JobSpec(api_instance.name)
+
+    job = MatrixJob(api_instance)
+    job._node_axis = job._revision_param = None
+    job._combination_param = 'C'
+
+    post.return_value.status_code = 200
+
+    job.build(Mock(), spec, 'matrix')
+
+    assert post.mock_calls
+
+
+@patch('jenkins_epo.jenkins.SETTINGS')
+@patch('jenkins_epo.jenkins.requests.post')
+def test_matrix_build_dry(post, SETTINGS):
+    from jenkins_epo.jenkins import MatrixJob, JobSpec
+
+    SETTINGS.DRY_RUN = 1
+
+    api_instance = Mock()
+    api_instance.name = 'matrix'
+    api_instance._data = {'url': 'https://jenkins/job'}
+
+    xml = api_instance._get_config_element_tree.return_value
+    xml.findall.return_value = []
+
+    spec = JobSpec(api_instance.name)
+
+    job = MatrixJob(api_instance)
+    job._node_axis = job._revision_param = None
+    job._combination_param = 'C'
+
+    post.return_value.status_code = 200
+
+    job.build(Mock(), spec, 'matrix')
+
+    assert not post.mock_calls
+
+
+@patch('jenkins_epo.jenkins.Job.factory')
+@patch('jenkins_epo.jenkins.SETTINGS')
 def test_create_job(SETTINGS, factory):
-    from jenkins_ghp.jenkins import LazyJenkins
+    from jenkins_epo.jenkins import LazyJenkins
 
     JENKINS = LazyJenkins(Mock())
     spec = Mock()
 
-    SETTINGS.GHP_DRY_RUN = 1
+    SETTINGS.DRY_RUN = 1
     JENKINS.create_job(spec)
 
     assert not JENKINS._instance.create_job.mock_calls
 
-    SETTINGS.GHP_DRY_RUN = 0
+    SETTINGS.DRY_RUN = 0
     JENKINS.create_job(spec)
 
     assert JENKINS._instance.create_job.mock_calls
     assert factory.mock_calls
 
 
-@patch('jenkins_ghp.jenkins.Job')
-@patch('jenkins_ghp.jenkins.SETTINGS')
-def test_list_jobs_from_env(SETTINGS, Job):
-    from jenkins_ghp.jenkins import LazyJenkins
+@patch('jenkins_epo.jenkins.Job')
+@patch('jenkins_epo.jenkins.SETTINGS')
+def test_list_jobs_from_env_missing(SETTINGS, Job):
+    from jenkins_epo.jenkins import LazyJenkins
 
-    SETTINGS.GHP_JOBS = ''
-    SETTINGS.GHP_JOBS_AUTO = 0
+    SETTINGS.JOBS = ''
+    SETTINGS.JOBS_AUTO = 0
     Job.jobs_filter = []
 
     JENKINS = LazyJenkins(Mock())
@@ -217,14 +293,14 @@ def test_list_jobs_from_env(SETTINGS, Job):
     assert 0 == len(jobs)
 
 
-@patch('jenkins_ghp.jenkins.match')
-@patch('jenkins_ghp.jenkins.Job.managed')
-@patch('jenkins_ghp.jenkins.JobSpec')
-@patch('jenkins_ghp.jenkins.SETTINGS')
+@patch('jenkins_epo.jenkins.match')
+@patch('jenkins_epo.jenkins.Job.managed')
+@patch('jenkins_epo.jenkins.JobSpec')
+@patch('jenkins_epo.jenkins.SETTINGS')
 def test_list_jobs_from_jenkins(SETTINGS, JobSpec, managed, match):
-    from jenkins_ghp.jenkins import LazyJenkins
+    from jenkins_epo.jenkins import LazyJenkins
 
-    SETTINGS.GHP_JOBS = 'match*'
+    SETTINGS.JOBS = 'match*'
 
     JENKINS = LazyJenkins(Mock())
 
@@ -241,12 +317,27 @@ def test_list_jobs_from_jenkins(SETTINGS, JobSpec, managed, match):
     assert 'job2' == job.name
 
 
-@patch('jenkins_ghp.jenkins.Job.factory')
-@patch('jenkins_ghp.jenkins.SETTINGS')
-def test_update_job(SETTINGS, factory):
-    from jenkins_ghp.jenkins import LazyJenkins
+@patch('jenkins_epo.jenkins.SETTINGS')
+@patch('jenkins_epo.jenkins.JobSpec.from_xml')
+def test_job_managed(from_xml, SETTINGS):
+    from jenkins_epo.jenkins import Job
 
-    SETTINGS.GHP_DRY_RUN = 1
+    SETTINGS.JOBS_AUTO = 0
+
+    job = Job(Mock())
+    job.jobs_filter = []
+    job._instance.name = 'job'
+    job._instance.get_scm_url.return_value = []
+
+    assert job.managed
+
+
+@patch('jenkins_epo.jenkins.Job.factory')
+@patch('jenkins_epo.jenkins.SETTINGS')
+def test_update_job(SETTINGS, factory):
+    from jenkins_epo.jenkins import LazyJenkins
+
+    SETTINGS.DRY_RUN = 1
 
     JENKINS = LazyJenkins(Mock())
     spec = Mock()
@@ -257,7 +348,7 @@ def test_update_job(SETTINGS, factory):
     assert not api_instance.update_config.mock_calls
     assert factory.mock_calls
 
-    SETTINGS.GHP_DRY_RUN = 0
+    SETTINGS.DRY_RUN = 0
 
     JENKINS.update_job(spec)
 
