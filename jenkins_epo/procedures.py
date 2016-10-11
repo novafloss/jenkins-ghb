@@ -52,7 +52,7 @@ def iter_heads():
                 queues.remove(queue)
 
 
-def list_repositories(with_settings=False):
+def list_repositories():
     repositories = set()
 
     env_repos = filter(

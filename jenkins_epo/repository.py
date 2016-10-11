@@ -144,6 +144,10 @@ class Repository(object):
         return cached_request(GITHUB.repos(self).branches, protected='true')
 
     @retry(wait_fixed=15000)
+    def fetch_statuses(self, name):
+        return cached_request(GITHUB.repos(self).statuses(name))
+
+    @retry(wait_fixed=15000)
     def fetch_pull_requests(self):
         logger.debug("Querying GitHub for %s PR.", self)
         return cached_request(GITHUB.repos(self).pulls)
