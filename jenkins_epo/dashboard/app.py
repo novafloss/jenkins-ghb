@@ -32,7 +32,7 @@ def pipeline_view(request):
     return web.json_response(dict(
         repository=dict(owner='bersace', name='bacasable'),
         ref='master',
-        sha='6eb60929735d4b88f039ff79045a8fce18d1a1a124',
+        tree_url='https://github.com/bersace/bacasable/tree/master',
         message_html="Fix previous commits listing",
         diff=dict(files=7, additions=43, deletions=8),
         stages=[

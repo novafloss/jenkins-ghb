@@ -12,7 +12,7 @@ var dashboard = {
         window.addEventListener('popstate', function(event){
             dashboard.route();
         });
-        window.addEventListener('onhashchange', function(event) {
+        window.addEventListener('hashchange', function(event) {
             dashboard.route();
         });
         this.route();
@@ -57,14 +57,15 @@ var dashboard = {
                 payload.repository.name + ' ' +
                 payload.ref +
                 ':</span> ' +
+                '<a href="' + payload.tree_url + '">' +
                 '<span class="message">' +
                 payload.message_html +
-                '</span>'
+                '</span>' +
+                '</a>'
             );
             dashboard.context.body.innerHTML = (
                 '<section class="head">' +
                 '<p id="diff">' +
-                '<span class="sha">' + payload.sha.slice(0, 7) + '</span>: ' +
                 '<span class="files">' + payload.diff.files + ' files changed</span>, ' +
                 '<span class="additions">' + payload.diff.additions + ' insertions(+)</span>, ' +
                 '<span class="deletions">' + payload.diff.deletions + ' deletions(-)</span>' +
@@ -78,7 +79,7 @@ var dashboard = {
                 parseInt(window.getComputedStyle(document.querySelector('#body')).width),
                 payload
             );
-            window.addEventListener('onresize', function() {
+            window.addEventListener('resize', function() {
                 dashboard.drawPipeline(
                     canvas,
                     parseInt(window.getComputedStyle(document.querySelector('#body')).width),
@@ -96,7 +97,7 @@ var dashboard = {
         var ctx = canvas.getContext("2d");
         var count = payload.stages.length;
         var colors = {
-            'success': "#009688",
+            'success': "#55a532",
             'pending': 'rgb(206, 166, 27)',
             'error': '#F44336',
             'failure': '#F44336',

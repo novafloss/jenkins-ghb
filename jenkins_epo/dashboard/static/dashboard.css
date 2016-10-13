@@ -28,14 +28,9 @@ header h1 {
 }
 
 header h1 {
-    vertical-align: middle;
     margin-left: 2ex;
     font-weight: inherit;
     font-size: 150%;
-}
-
-header h1 * {
-    vertical-align: middle;
 }
 
 article {
@@ -48,11 +43,14 @@ section h {
     font-size: 120%;
 }
 
+a {
+    color: #39c;
+    text-decoration: none;
+}
+
 #body a {
     display: inline-block;
     padding: 1ex;
-    color: #39c;
-    text-decoration: none;
 }
 
 /* Pages. */
@@ -100,6 +98,6 @@ span.deletions {
 }
 
 header .head {
-    font-size: 80%;
+    font-size: 70%;
     color: #555;
 }
