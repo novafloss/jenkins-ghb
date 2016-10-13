@@ -12,7 +12,9 @@ var dashboard = {
         window.addEventListener('popstate', function(event){
             dashboard.route();
         });
-        window.onhashchange = function(event) {dashboard.route()}
+        window.addEventListener('onhashchange', function(event) {
+            dashboard.route();
+        });
         this.route();
     },
     route: function() {
@@ -76,13 +78,13 @@ var dashboard = {
                 parseInt(window.getComputedStyle(document.querySelector('#body')).width),
                 payload
             );
-            window.onresize = function() {
+            window.addEventListener('onresize', function() {
                 dashboard.drawPipeline(
                     canvas,
                     parseInt(window.getComputedStyle(document.querySelector('#body')).width),
                     payload
                 );
-            }
+            });
         };
         request.send();
     },
