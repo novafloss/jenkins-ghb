@@ -71,106 +71,121 @@ var dashboard = {
                 '</section>'
             );
             var canvas = document.getElementById('pipeline');
-            canvas.width = parseInt(window.getComputedStyle(document.querySelector('#body')).width)
-            var rowSize = parseInt("60pt");
-            canvas.height = rowSize * (2 + payload.stages[0].jobs.length)
-            var ctx = canvas.getContext("2d");
-            var count = payload.stages.length;
-            var colors = {
-                'success': "#009688",
-                'pending': 'rgb(206, 166, 27)',
-                'error': '#F44336',
-                'failure': '#F44336',
-                'unknown': '#9E9E9E',
-            }
-            var color = '';
-            var colSize = canvas.offsetWidth / count;
-            var radius = parseInt("20pt");
-            var job_radius = .75 * radius;
-            ctx.lineWidth = parseInt("8pt");
-            for (var i = 0; i < payload.stages.length; i++) {
-                var stage = payload.stages[i];
-                var x = i * colSize;
-                var y = parseInt("1pt");
-                var previous_color = color;
-                color = colors[stage.state];
-
-                y = y + rowSize;
-                ctx.fillStyle = "black";
-                ctx.font = "25pt sans-serif";
-                ctx.fillText(stage.name, x + radius / 2, y);
-
-                y = y + radius * 2;
-
-                if (stage.time) {
-                    ctx.font = "italic 16pt sans-serif";
-                    ctx.fillText(stage.time, x - colSize / 2, y + 1.5 * radius);
-                }
-
-                if (i > 0) {
-                    var grd = ctx.createLinearGradient(x - colSize, y, x, y);
-                    grd.addColorStop(0, previous_color);
-                    grd.addColorStop(3 * radius / colSize, previous_color);
-                    grd.addColorStop(6 * radius / colSize, color);
-                    grd.addColorStop(1, color);
-                    ctx.strokeStyle = grd;
-                    ctx.fillStyle = grd;
-
-                    ctx.beginPath();
-                    ctx.moveTo(colSize * (i-1) + radius / 2, y);
-                    ctx.lineTo(x + radius / 2, y);
-                    ctx.stroke();
-                }
-                else {
-                    ctx.strokeStyle = color;
-                    ctx.fillStyle = color;
-                }
-
-                ctx.beginPath();
-                ctx.arc(
-                    x + radius, y,
-                    radius, 0, 2 * Math.PI
+            dashboard.drawPipeline(
+                canvas,
+                parseInt(window.getComputedStyle(document.querySelector('#body')).width),
+                payload
+            );
+            window.onresize = function() {
+                dashboard.drawPipeline(
+                    canvas,
+                    parseInt(window.getComputedStyle(document.querySelector('#body')).width),
+                    payload
                 );
-                ctx.fill();
-
-                if (stage.jobs.length) {
-                    var jobs_height = radius + stage.jobs.length * rowSize;
-                    var grd = ctx.createLinearGradient(x, y, x, y + jobs_height);
-                    grd.addColorStop(0, color);
-                    grd.addColorStop(radius / jobs_height, color);
-                    ctx.beginPath();
-                    var job_color = color;
-                    for (var j = 0; j < stage.jobs.length; j++) {
-                        var job_color_previous = job_color;
-                        var job = stage.jobs[j];
-                        job_color = colors[job.state];
-                        grd.addColorStop((rowSize * (1 + j) - job_radius) / jobs_height, job_color);
-                        grd.addColorStop(Math.min(1, (rowSize * (1 + j) + job_radius) / jobs_height), job_color);
-                        ctx.arc(
-                            x + radius, y + rowSize + j * rowSize,
-                            job_radius, 0, 2 * Math.PI
-                        );
-                    }
-                    ctx.fillStyle = grd;
-                    ctx.fill();
-
-                    for (var j = 0; j < stage.jobs.length; j++) {
-                        var job = stage.jobs[j];
-                        ctx.fillStyle = "black";
-                        ctx.font = "20pt sans-serif";
-                        ctx.fillText(job.name, x + radius * 2, y + (1 + j) * rowSize + job_radius / 2);
-                    }
-
-                    ctx.strokeStyle = grd;
-                    ctx.beginPath();
-                    ctx.moveTo(x + radius, y);
-                    ctx.lineTo(x + radius, y + rowSize * stage.jobs.length);
-                    ctx.stroke();
-                }
-            };
-            console.log("Rendering done.");
+            }
         };
         request.send();
+    },
+
+    drawPipeline: function(canvas, max_width, payload) {
+        canvas.width = max_width;
+        var rowSize = parseInt("60pt");
+        canvas.height = rowSize * (2 + payload.stages[0].jobs.length)
+        var ctx = canvas.getContext("2d");
+        var count = payload.stages.length;
+        var colors = {
+            'success': "#009688",
+            'pending': 'rgb(206, 166, 27)',
+            'error': '#F44336',
+            'failure': '#F44336',
+            'unknown': '#9E9E9E',
+        }
+        var color = '';
+        var colSize = canvas.offsetWidth / count;
+        var radius = parseInt("20pt");
+        var job_radius = .75 * radius;
+        ctx.lineWidth = parseInt("8pt");
+        for (var i = 0; i < payload.stages.length; i++) {
+            var stage = payload.stages[i];
+            var x = i * colSize;
+            var y = parseInt("1pt");
+            var previous_color = color;
+            color = colors[stage.state];
+
+            y = y + rowSize;
+            ctx.fillStyle = "black";
+            ctx.font = "25pt sans-serif";
+            ctx.fillText(stage.name, x + radius / 2, y);
+
+            y = y + radius * 2;
+
+            if (stage.time) {
+                ctx.font = "italic 16pt sans-serif";
+                ctx.fillText(stage.time, x - colSize / 2, y + 1.5 * radius);
+            }
+
+            if (i > 0) {
+                var grd = ctx.createLinearGradient(x - colSize, y, x, y);
+                grd.addColorStop(0, previous_color);
+                grd.addColorStop(3 * radius / colSize, previous_color);
+                grd.addColorStop(6 * radius / colSize, color);
+                grd.addColorStop(1, color);
+                ctx.strokeStyle = grd;
+                ctx.fillStyle = grd;
+
+                ctx.beginPath();
+                ctx.moveTo(colSize * (i-1) + radius / 2, y);
+                ctx.lineTo(x + radius / 2, y);
+                ctx.stroke();
+            }
+            else {
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+            }
+
+            ctx.beginPath();
+            ctx.arc(
+                x + radius, y,
+                radius, 0, 2 * Math.PI
+            );
+            ctx.fill();
+
+            if (stage.jobs.length) {
+                var jobs_height = radius + stage.jobs.length * rowSize;
+                var grd = ctx.createLinearGradient(x, y, x, y + jobs_height);
+                grd.addColorStop(0, color);
+                grd.addColorStop(radius / jobs_height, color);
+                ctx.beginPath();
+                var job_color = color;
+                for (var j = 0; j < stage.jobs.length; j++) {
+                    var job_color_previous = job_color;
+                    var job = stage.jobs[j];
+                    job_color = colors[job.state];
+                    grd.addColorStop((rowSize * (1 + j) - job_radius) / jobs_height, job_color);
+                    grd.addColorStop(Math.min(1, (rowSize * (1 + j) + job_radius) / jobs_height), job_color);
+                    ctx.arc(
+                        x + radius, y + rowSize + j * rowSize,
+                        job_radius, 0, 2 * Math.PI
+                    );
+                }
+                ctx.fillStyle = grd;
+                ctx.fill();
+
+                for (var j = 0; j < stage.jobs.length; j++) {
+                    var job = stage.jobs[j];
+                    ctx.fillStyle = "black";
+                    ctx.font = "20pt sans-serif";
+                    ctx.fillText(job.name, x + radius * 2, y + (1 + j) * rowSize + job_radius / 2);
+                }
+
+                ctx.strokeStyle = grd;
+                ctx.beginPath();
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + radius, y + rowSize * stage.jobs.length);
+                ctx.stroke();
+            }
+        };
+        console.log("Rendering done.");
     },
 
     headsView: function(repository) {
