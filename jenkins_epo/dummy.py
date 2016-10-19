@@ -1,9 +1,5 @@
 import logging
 
-from redis import Redis
-from rq import Queue
-
-from .bot import Extension
 from .extensions import (
     CreateJobsExtension as BaseCreateJobsExtension,
 )
