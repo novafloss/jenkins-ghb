@@ -138,6 +138,7 @@ def test_run_extension(pkg_resources):
 
     assert ext.run.mock_calls
 
+
 @patch('jenkins_epo.bot.SETTINGS')
 def test_run_nondefault_extension(settings):
     from jenkins_epo.bot import Bot
