@@ -53,6 +53,16 @@ Now write a ``jenkins.yml`` file and open a PR::
 Many instructions are available. Just ask the bot by commenting ``jenkins:
 help`` in an open PR!
 
+Replacing Jenkins with your custom backend
+==========================================
+
+The default configuration requires jenkins. However, it is possible to replace
+jenkins extensions with your own::
+
+    export EXTENSIONS='createjobs=jenkins_epo.dummy:CreateJobsExtension'
+
+This will just log scripts to execute with the INFO level instead of doing
+anything.
 
 .. |CI| image:: https://circleci.com/gh/novafloss/jenkins-epo.svg?style=shield
    :target: https://circleci.com/gh/novafloss/jenkins-epo
