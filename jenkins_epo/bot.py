@@ -14,6 +14,7 @@
 
 import collections
 import copy
+import importlib
 import logging
 import pkg_resources
 import re
@@ -59,13 +60,23 @@ See `jenkins: help` for documentation.
 
     def __init__(self, queue_empty=True):
         self.queue_empty = queue_empty
-
         self.extensions_map = {}
-        for ep in pkg_resources.iter_entry_points(__name__ + '.extensions'):
-            cls = ep.load()
-            self.extensions_map[ep.name] = ext = cls(ep.name, self)
-            SETTINGS.load(ext.SETTINGS)
-            logger.debug("Loaded extension %r.", ext)
+
+        if SETTINGS.EXTENSIONS:
+            for extension in SETTINGS.EXTENSIONS.split(','):
+                name, spec = [e.strip() for e in extension.split('=')]
+                m, c = spec.split(':')
+                module = importlib.import_module(m)
+                cls = getattr(module, c)
+                self.extensions_map[name] = ext = cls(name, self)
+                SETTINGS.load(ext.SETTINGS)
+                logger.debug("Loaded extension %r.", ext)
+        else:
+            for ep in pkg_resources.iter_entry_points(__name__ + '.extensions'):
+                cls = ep.load()
+                self.extensions_map[ep.name] = ext = cls(ep.name, self)
+                SETTINGS.load(ext.SETTINGS)
+                logger.debug("Loaded extension %r.", ext)
 
         self.extensions = sorted(
             self.extensions_map.values(), key=Extension.sort_key
