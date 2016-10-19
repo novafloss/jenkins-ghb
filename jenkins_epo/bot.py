@@ -72,7 +72,8 @@ See `jenkins: help` for documentation.
                 SETTINGS.load(ext.SETTINGS)
                 logger.debug("Loaded extension %r.", ext)
         else:
-            for ep in pkg_resources.iter_entry_points(__name__ + '.extensions'):
+            exts = pkg_resources.iter_entry_points(__name__ + '.extensions')
+            for ep in exts:
                 cls = ep.load()
                 self.extensions_map[ep.name] = ext = cls(ep.name, self)
                 SETTINGS.load(ext.SETTINGS)
