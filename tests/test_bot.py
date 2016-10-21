@@ -137,3 +137,13 @@ def test_run_extension(pkg_resources):
     bot.run(pr)
 
     assert ext.run.mock_calls
+
+
+@patch('jenkins_epo.bot.SETTINGS')
+def test_run_nondefault_extension(settings):
+    from jenkins_epo.bot import Bot
+    settings.EXTENSIONS = 'createjobs=jenkins_epo.dummy:CreateJobsExtension'
+
+    bot = Bot()
+    assert 'createjobs' in bot.extensions_map
+    assert 'help' not in bot.extensions_map
