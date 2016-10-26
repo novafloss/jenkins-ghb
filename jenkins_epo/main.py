@@ -21,6 +21,12 @@ import logging
 import sys
 
 
+import aiohttp.web
+try:
+    import aiohttp_utils
+except ImportError:
+    aiohttp_utils = None
+
 from .bot import Bot
 from .cache import CACHE
 from .github import GITHUB
@@ -87,6 +93,22 @@ def bot():
     )
 
 
+def dashboard():
+    """Pipeline dashboard"""
+    from .dashboard.app import dashboard
+
+    if SETTINGS.DEBUG and aiohttp_utils:
+        aiohttp_utils.run(
+            dashboard,
+            app_uri="jenkins_epo.dashboard.app:dashboard",
+            host="0.0.0.0", port=5000,
+            reload=True,
+            graceful_timeout=1,
+        )
+    else:
+        aiohttp.web.run_app(dashboard, port=5000)
+
+
 def list_heads():
     """List heads to build"""
     procedures.whoami()
@@ -114,14 +136,12 @@ def command_exitcode(command_func):
         pdb.post_mortem(sys.exc_info()[2])
         logger.debug('Graceful exit from debugger')
 
-        return 1
-
 
 def main(argv=None):
     argv = argv or sys.argv
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command', metavar='COMMAND')
-    for command in [bot, list_heads]:
+    for command in [bot, dashboard, list_heads]:
         subparser = subparsers.add_parser(
             command.__name__.replace('_', '-'),
             help=inspect.cleandoc(command.__doc__ or '').split('\n')[0],

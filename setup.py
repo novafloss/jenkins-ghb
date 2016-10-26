@@ -54,6 +54,9 @@ setup(
         ],
     },
     install_requires=[
+        'aiodns',
+        'aiohttp',
+        'chardet',
         'githubpy',
         'jenkinsapi',
         'jenkins-yml[renderer]',
