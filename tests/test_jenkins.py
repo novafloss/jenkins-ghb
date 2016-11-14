@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 
@@ -350,3 +351,78 @@ epo:
 
     job = Job(Mock(_data=dict(description="""no yaml""")))
     assert not job.updated_at
+
+
+def test_rebuild_instruction():
+    from jenkins_epo.bot import Instruction
+    from jenkins_epo.extensions.jenkins import RebuildExtension
+
+    ext = RebuildExtension('e', Mock())
+    ext.current = ext.bot.current
+    ext.current.rebuild_before = None
+
+    ext.process_instruction(
+        Instruction(author='author', name='rebuild', date=Mock())
+    )
+    assert ext.current.rebuild_failed
+
+
+@patch('jenkins_epo.extensions.jenkins.JENKINS')
+def test_rebuild_run(JENKINS):
+    from jenkins_epo.extensions.jenkins import RebuildExtension
+    JENKINS.baseurl = 'jenkins://'
+
+    ext = RebuildExtension('e', Mock())
+    ext.current = ext.bot.current
+    ext.current.statuses = {
+        'ci/circleci': {'target_url': 'https://circleci.com/...'},
+        'oldfailed': {
+            'target_url': 'jenkins://oldfailed',
+            'updated_at': datetime(2016, 11, 14, 14, 0, 0),
+        },
+        'outdatedrunning': {
+            'state': 'pending',
+            'target_url': 'jenkins://outdatedrunning',
+            'updated_at': datetime(2006, 11, 14, 14, 0, 0),
+        },
+        'oldrunning': {
+            'state': 'pending',
+            'target_url': 'jenkins://oldrunning',
+            'updated_at': datetime(2016, 11, 14, 14, 0, 0),
+        },
+        'requeued': {
+            'state': 'pending',
+            'target_url': 'jenkins://requeued',
+            'updated_at': datetime(2016, 11, 14, 16, 0, 0),
+        },
+    }
+
+    _build_map = dict()
+
+    def get_build(url):
+        if 'outdated' in url:
+            raise Exception('No such build')
+        else:
+            build = _build_map[url] = Mock()
+            build.is_running.return_value = 'running' in url
+            return build
+
+    JENKINS.get_build_from_url.side_effect = get_build
+
+    ext.current.rebuild_before = None
+
+    ext.run()
+
+    ext.current.rebuild_before = datetime(2016, 11, 14, 15, 55, 0)
+
+    ext.run()
+
+    assert 'ci/circleci' in ext.current.statuses
+    assert 'requeued' in ext.current.statuses
+    assert 'oldfailed' not in ext.current.statuses
+    assert 'oldrunning' not in ext.current.statuses
+    assert 'outdatedrunning' not in ext.current.statuses
+
+    assert _build_map
+    build = _build_map['jenkins://oldrunning']
+    assert 1 == len(build.stop.mock_calls)

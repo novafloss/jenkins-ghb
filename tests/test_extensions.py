@@ -51,18 +51,6 @@ def test_compute_skip():
     assert skip == ['this']
 
 
-def test_compute_rebuild():
-    from jenkins_epo.bot import Instruction
-    from jenkins_epo.extensions.jenkins import BuilderExtension
-
-    ext = BuilderExtension('e', Mock())
-    ext.current = ext.bot.current
-    ext.process_instruction(
-        Instruction(author='author', name='rebuild', date=Mock())
-    )
-    assert ext.current.rebuild_failed
-
-
 def test_compute_help():
     from jenkins_epo.bot import Bot
 

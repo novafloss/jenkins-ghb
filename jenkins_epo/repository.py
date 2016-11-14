@@ -64,14 +64,6 @@ class CommitStatus(dict):
             return False
         return True
 
-    @property
-    def is_rebuildable(self):
-        if self.get('state') in {'error', 'failure'}:
-            return True
-        if self.get('description') in {'Skipped', 'Disabled on Jenkins.'}:
-            return True
-        return False
-
     jenkins_status_map = {
         # Requeue an aborted job
         'ABORTED': ('error', 'Aborted!'),
@@ -277,19 +269,10 @@ class Commit(object):
             GITHUB.repos(self.repository).commits(self.sha).status,
         )
 
-    def filter_not_built_contexts(self, contexts, rebuild_failed=None):
+    def filter_not_built_contexts(self, contexts):
         for context in contexts:
             status = CommitStatus(self.statuses.get(context, {}))
-            # Skip failed job, unless rebuild asked and old
-            if rebuild_failed and status.is_rebuildable:
-                if status['updated_at'] > rebuild_failed:
-                    continue
-                else:
-                    logger.debug(
-                        "Requeue context %s failed before %s.",
-                        context, rebuild_failed.strftime('%Y-%m-%d %H:%M:%S')
-                    )
-            elif status.get('state') == 'pending':
+            if status.get('state') == 'pending':
                 # Pending context may be requeued.
                 if not status.is_queueable:
                     continue

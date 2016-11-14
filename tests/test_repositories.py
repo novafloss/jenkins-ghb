@@ -294,7 +294,6 @@ def test_update_status(push_status):
 
 @patch('jenkins_epo.repository.GITHUB')
 def test_push_status_dry(GITHUB):
-    from datetime import datetime
     from jenkins_epo.repository import Commit, CommitStatus
 
     GITHUB.dry = 1
@@ -327,49 +326,30 @@ def test_push_status_1000(GITHUB):
 def test_filter_contextes():
     from jenkins_epo.repository import Commit, CommitStatus
 
-    rebuild_failed = datetime(2016, 8, 11, 16)
-
     commit = Commit(Mock(), 'd0d0')
     commit.statuses = {
         'backed': CommitStatus({'state': 'pending', 'description': 'Backed'}),
-        'errored': {
-            'state': 'error',
-            'updated_at': datetime(2016, 8, 11, 10),
-        },
-        'failed': {
-            'state': 'failure',
-            'updated_at': datetime(2016, 8, 11, 10),
-        },
+        'errored': {'state': 'error'},
+        'failed': {'state': 'failure'},
         'green': {'state': 'success', 'description': 'Success!'},
-        'newfailed': {
-            'state': 'error',
-            'updated_at': datetime(2016, 8, 11, 20),
-        },
         'queued': {'state': 'pending', 'description': 'Queued'},
         'running': {'state': 'pending', 'description': 'build #789'},
-        'skipped': {
-            'state': 'success', 'description': 'Skipped',
-            'updated_at': datetime(2016, 8, 11, 10),
-        },
+        'skipped': {'state': 'success', 'description': 'Skipped'},
     }
 
-    not_built = list(commit.filter_not_built_contexts(
-        [
-            'backed', 'errored', 'failed', 'green', 'newfailed', 'notbuilt',
-            'queued', 'running', 'skipped',
-        ],
-        rebuild_failed,
-    ))
+    not_built = list(commit.filter_not_built_contexts([
+        'backed', 'errored', 'failed', 'green', 'queued', 'running', 'skipped',
+        'not_built'
+    ]))
 
     assert 'backed' in not_built
-    assert 'errored' in not_built
-    assert 'failed' in not_built
+    assert 'errored' not in not_built
+    assert 'failed' not in not_built
     assert 'green' not in not_built
-    assert 'newfailed' not in not_built
-    assert 'not_built' not in not_built
+    assert 'not_built' in not_built
     assert 'queued' in not_built
     assert 'running' not in not_built
-    assert 'skipped' in not_built
+    assert 'skipped' not in not_built
 
 
 @patch('jenkins_epo.repository.cached_request')

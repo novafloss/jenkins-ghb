@@ -41,6 +41,7 @@ setup(
             'jenkins-builder = jenkins_epo.extensions.jenkins:BuilderExtension',
             'jenkins-canceller = jenkins_epo.extensions.jenkins:CancellerExtension',
             'jenkins-createjobs = jenkins_epo.extensions.jenkins:CreateJobsExtension',
+            'jenkins-rebuild = jenkins_epo.extensions.jenkins:RebuildExtension',
             'jenkins-stages = jenkins_epo.extensions.jenkins:StagesExtension',
             'merger = jenkins_epo.extensions.core:MergerExtension',
             'report = jenkins_epo.extensions.core:ReportExtension',
