@@ -13,6 +13,7 @@
 # jenkins-epo.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import OrderedDict
+from datetime import datetime
 import logging
 import re
 
@@ -40,18 +41,13 @@ class BuilderExtension(JenkinsExtension):
       jobs: ['*', '-notthis*']
       jobs: ['this*', '+andthis*', '-notthis*']
 
-    # Skipping
-    jenkins: skip
-
-    # Requeue past failed/skipped jobs
-    jenkins: rebuild
+    jenkins: skip     # Skipping
     """
 
     DEFAULTS = {
         'jobs_match': [],
         'skip': [],
         'skip_errors': [],
-        'rebuild_failed': None,
     }
     SKIP_ALL = ('.*',)
     BUILD_ALL = ['*']
@@ -86,8 +82,6 @@ jenkins: reset-skip-errors
             self.current.jobs_match = patterns
         elif instruction == 'reset-skip-errors':
             self.current.skip_errors = []
-        elif instruction == 'rebuild':
-            self.current.rebuild_failed = instruction.date
 
     def is_queue_empty(self):
         if self.current.SETTINGS.ALWAYS_QUEUE:
@@ -119,7 +113,6 @@ jenkins: reset-skip-errors
             job = self.current.jobs[spec.name]
             not_built = self.current.last_commit.filter_not_built_contexts(
                 job.list_contexts(spec),
-                rebuild_failed=self.current.rebuild_failed
             )
             queue_empty = self.is_queue_empty()
             toqueue_contexts = []
@@ -220,7 +213,7 @@ class CreateJobsExtension(JenkinsExtension):
     jenkins: refresh-jobs  # Refresh job definition on Jenkins.
     """
 
-    stage = '05'
+    stage = '10'
 
     DEFAULTS = {
         'jobs': {},
@@ -311,6 +304,50 @@ Failed to create or update Jenkins job `%(name)s`.
             ),
             self.current.last_commit.date,
         )
+
+
+class RebuildExtension(JenkinsExtension):
+    """
+    jenkins: rebuild  # Requeue jobs
+    """
+    stage = '05'
+
+    DEFAULTS = {
+        'rebuild_before': None
+    }
+
+    def process_instruction(self, instruction):
+        if instruction == 'rebuild':
+            self.current.rebuild_before = instruction.date
+
+    def run(self):
+        if not isinstance(self.current.rebuild_before, datetime):
+            return
+
+        for context, status in dict(self.current.statuses).items():
+            if not status.get('target_url', '').startswith(JENKINS.baseurl):
+                continue
+
+            if status['updated_at'] > self.current.rebuild_before:
+                continue
+
+            if status.get('state') == 'pending':
+                try:
+                    build = JENKINS.get_build_from_url(status['target_url'])
+                except Exception as e:
+                    logger.debug(
+                        "Failed to get pending build status for contexts: %s:"
+                        " %s",
+                        e.__class__.__name__, e,
+                    )
+                    build = None
+
+                if build and build.is_running():
+                    logger.warn("Cancelling %s.", build)
+                    build.stop()
+
+            logger.info("Rebuild context %s.", context)
+            self.current.statuses.pop(context)
 
 
 class Stage(object):
