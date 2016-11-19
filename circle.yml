@@ -10,5 +10,7 @@ dependencies:
 test:
   override:
     - tox --recreate
+    - coverage report
+    - coverage xml && grep 'extensions.py' coverage.xml
   post:
     - codecov
