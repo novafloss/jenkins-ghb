@@ -33,7 +33,7 @@ def pipeline_view(request):
         repository=dict(owner='bersace', name='bacasable'),
         ref='master',
         tree_url='https://github.com/bersace/bacasable/tree/master',
-        message_html="Fix previous commits listing",
+        message_html="Implement OptOut",
         diff=dict(files=7, additions=43, deletions=8),
         stages=[
             dict(
