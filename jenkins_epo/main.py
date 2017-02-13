@@ -26,13 +26,21 @@ from aiohttp.web import run_app
 from .bot import Bot
 from . import procedures
 from .settings import SETTINGS
-from .web import app as webapp
+from .web import app as webapp, register_webhook
 from .workers import WORKERS
 
 
 logger = logging.getLogger('jenkins_epo')
 
+COMMANDS = []
 
+
+def command(callable_):
+    COMMANDS.append(callable_)
+    return callable_
+
+
+@command
 def bot():
     """Poll GitHub to build heads"""
     loop = asyncio.get_event_loop()
@@ -46,6 +54,7 @@ def bot():
     )
 
 
+@command
 def list_extensions():
     """Show bot pipeline of extensions"""
     bot = Bot()
@@ -53,6 +62,7 @@ def list_extensions():
         print(extension.stage, extension.name)
 
 
+@command
 @asyncio.coroutine
 def list_heads():
     """List heads to build"""
@@ -61,6 +71,7 @@ def list_heads():
     yield from WORKERS.terminate()
 
 
+@command
 def list_plugins():
     """List required Jenkins plugins"""
     from jenkins_yml.job import Job
@@ -75,13 +86,22 @@ def process(url):
     yield from procedures.process_url(url, throttle=False)
 
 
+@command
+@asyncio.coroutine
+def register():
+    """Register GitHub webhook"""
+    yield from WORKERS.start()
+    yield from register_webhook()
+    yield from WORKERS.terminate()
+
+
 def resolve(func):
     while hasattr(func, '__wrapped__'):
         func = func.__wrapped__
     return func
 
 
-def addcommand(subparsers, command):
+def add_command_parser(subparsers, command):
     parser = subparsers.add_parser(
         command.__name__.replace('_', '-'),
         help=inspect.cleandoc(command.__doc__ or '').split('\n')[0],
@@ -100,8 +120,8 @@ def main(argv=None, *, loop=None):
     argv = argv or sys.argv
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command', metavar='COMMAND')
-    for command in bot, list_extensions, list_heads, list_plugins, process:
-        addcommand(subparsers, command)
+    for command in COMMANDS:
+        add_command_parser(subparsers, command)
 
     args = parser.parse_args(argv)
     try:

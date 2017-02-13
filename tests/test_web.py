@@ -15,3 +15,10 @@ def test_simple(mocker, WORKERS):
 
     assert 200 == res.status
     assert WORKERS.enqueue.mock_calls
+
+
+def test_signature():
+    from jenkins_epo.web import compute_signature
+    payload = b"""PAYLOAD"""
+    wanted_signature = 'sha1=917eb41141e2e4ce264faa004335e46a344f3f54'
+    assert wanted_signature == compute_signature(payload, b'notasecret')
