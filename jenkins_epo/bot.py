@@ -232,6 +232,21 @@ See `jenkins: help` for documentation.
             for ext in self.extensions:
                 ext.process_instruction(instruction)
 
+        def requeue(self):
+            loop = asyncio.get_event_loop()
+            url = self.current.head.url
+            loop.call_later(60, self.requeue_callback, url)
+
+        def requeue_callback(self, url):
+            from .procedures import process_url
+            from .tasks import ProcessUrlTask
+
+            priority = ('90-requeue', url)
+            loop = asyncio.get_event_loop()
+            loop.create_task(WORKERS.enqueue(
+                ProcessUrlTask(priority, url, callable_=process_url)
+            ))
+
 
 class Instruction(object):
     def __init__(self, author, name, args=None, date=None):

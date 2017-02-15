@@ -77,6 +77,7 @@ class BuilderExtension(JenkinsExtension):
 
     @asyncio.coroutine
     def run(self):
+        requeue = False
         for spec in self.current.job_specs.values():
             logger.debug("Processing %s.", spec)
             job = self.current.jobs[spec.name]
@@ -93,6 +94,8 @@ class BuilderExtension(JenkinsExtension):
                 )
                 if new_status.get('description') == 'Queued':
                     toqueue_contexts.append(context)
+                elif new_status.get('description') == 'Queued':
+                    requeue = True
 
             if toqueue_contexts and queue_empty:
                 try:
@@ -107,6 +110,9 @@ class BuilderExtension(JenkinsExtension):
                                 target_url=job.baseurl,
                             )
                         )
+        if requeue:
+            yield from self.bot.requeue()
+
 
     def status_for_new_context(self, job, context, queue_empty):
         new_status = CommitStatus(target_url=job.baseurl, context=context)
