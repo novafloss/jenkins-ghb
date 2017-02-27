@@ -59,6 +59,7 @@ Feel free to contribute :)
 - Detect branch from ``commit_comment`` event.
 - Set custom status context. Create job name with <owner>_<project>_<job>.
   Context with only <job>.
+- Edit status on GitHub.
 - Cancel job on PR close.
 - Skip event on comments not containing ``jenkins:``.
 - Test GraphQL.
