@@ -13,21 +13,13 @@ def test_first_stage():
     ext.current = Mock()
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['build', 'test']
+    ext.current.statuses = {}
     ext.current.job_specs = specs = {
         'build': Mock(config=dict(stage='build')),
         'test': Mock(config=dict()),
     }
     specs['build'].name = 'build'
     specs['test'].name = 'test'
-
-    ext.current.jobs = jobs = {
-        'build': Mock(),
-        'test': Mock(),
-    }
-    jobs['build'].list_contexts.return_value = ['build']
-    jobs['test'].list_contexts.return_value = ['test']
-
-    ext.current.statuses = {}
 
     yield from ext.run()
 
@@ -43,19 +35,13 @@ def test_second_stage():
     ext.current = Mock()
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['build', 'test']
+    ext.current.statuses = {}
     ext.current.job_specs = specs = {
         'test': Mock(config=dict()),
         'missing': Mock(config=dict()),
     }
     specs['test'].name = 'test'
     specs['missing'].name = 'missing'
-
-    ext.current.jobs = jobs = {
-        'test': Mock(),
-    }
-    jobs['test'].list_contexts.return_value = ['test']
-
-    ext.current.statuses = {}
 
     yield from ext.run()
 
@@ -71,17 +57,11 @@ def test_no_test_stage():
     ext.current = Mock()
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['build', 'deploy']
+    ext.current.statuses = {}
     ext.current.job_specs = specs = {
         'build': Mock(config=dict()),
     }
     specs['build'].name = 'build'
-
-    ext.current.jobs = jobs = {
-        'build': Mock(),
-    }
-    jobs['build'].list_contexts.return_value = ['build']
-
-    ext.current.statuses = {}
 
     yield from ext.run()
 
@@ -98,20 +78,13 @@ def test_periodic_ignored():
     ext.current = Mock()
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['deploy', 'test']
+    ext.current.statuses = {}
     ext.current.job_specs = specs = {
         'periodic': Mock(config=dict(periodic=True)),
         'test': Mock(config=dict()),
     }
     specs['periodic'].name = 'periodic'
     specs['test'].name = 'test'
-
-    ext.current.jobs = jobs = {
-        'periodic': Mock(),
-        'test': Mock(),
-    }
-    jobs['test'].list_contexts.return_value = ['test']
-
-    ext.current.statuses = {}
 
     yield from ext.run()
 
@@ -128,21 +101,13 @@ def test_periodic_required():
     ext.current = Mock()
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['deploy', 'test']
+    ext.current.statuses = {}
     ext.current.job_specs = specs = {
         'deploy': Mock(config=dict(stage='deploy', periodic=True)),
         'test': Mock(config=dict()),
     }
     specs['deploy'].name = 'deploy'
     specs['test'].name = 'test'
-
-    ext.current.jobs = jobs = {
-        'deploy': Mock(),
-        'test': Mock(),
-    }
-    jobs['deploy'].list_contexts.return_value = ['deploy']
-    jobs['test'].list_contexts.return_value = ['test']
-
-    ext.current.statuses = {}
 
     yield from ext.run()
 
@@ -158,15 +123,11 @@ def test_branches_limit():
     ext.current = Mock()
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['test']
+    ext.current.statuses = {}
     ext.current.job_specs = specs = {
         'job': Mock(config=dict(branches='master')),
     }
     specs['job'].name = 'job'
-
-    ext.current.jobs = jobs = {'job': Mock()}
-    jobs['job'].list_contexts.return_value = ['job']
-
-    ext.current.statuses = {}
 
     yield from ext.run()
 
@@ -187,14 +148,15 @@ def test_external_context():
         dict(name='final', external=['final']),
     ]
     ext.current.job_specs = {}
-    ext.current.jobs = {}
     ext.current.statuses = {}
 
     yield from ext.run()
 
     assert 'deploy' == ext.current.current_stage.name
 
-    ext.current.statuses = {'deploy/prod': {'state': 'success'}}
+    ext.current.statuses = {
+        'plop': {'context': 'deploy/prod', 'state': 'success'},
+    }
 
     yield from ext.run()
 
@@ -211,7 +173,6 @@ def test_nostages():
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['test', 'deploy']
     ext.current.job_specs = {}
-    ext.current.jobs = {}
     ext.current.statuses = {}
 
     with pytest.raises(SkipHead):
@@ -228,20 +189,14 @@ def test_complete():
     ext.current.head.ref = 'pr'
     ext.current.SETTINGS.STAGES = ['test', 'deploy']
     ext.current.job_specs = specs = {
-        'test-job': Mock(config=dict()),
-        'deploy-job': Mock(config=dict(stage='deploy')),
+        'test': Mock(config=dict()),
+        'deploy': Mock(config=dict(stage='deploy')),
     }
-    specs['test-job'].name = 'test-job'
-    specs['deploy-job'].name = 'deploy-job'
-    ext.current.jobs = jobs = {
-        'test-job': Mock(),
-        'deploy-job': Mock(),
-    }
-    jobs['test-job'].list_contexts.return_value = ['test']
-    jobs['deploy-job'].list_contexts.return_value = ['deploy']
+    specs['test'].name = 'test'
+    specs['deploy'].name = 'deploy'
     ext.current.statuses = {
-        'test': {'state': 'success'},
-        'deploy': {'state': 'success'},
+        'test': {'context': 'test', 'state': 'success'},
+        'deploy': {'context': 'deploy', 'state': 'success'},
     }
 
     yield from ext.run()
