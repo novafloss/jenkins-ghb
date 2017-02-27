@@ -99,6 +99,9 @@ logging_config = {
 logging_config['loggers']['jenkins_yml'] = (
     logging_config['loggers']['jenkins_epo']
 )
+logging_config['loggers']['aiohttp'] = (
+    logging_config['loggers']['jenkins_epo']
+)
 
 
 def setup_logging():
