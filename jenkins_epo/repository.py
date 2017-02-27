@@ -48,14 +48,17 @@ class CommitStatus(dict):
         else:
             raise TypeError("Can't compare with %s.", type(other))
 
+    def __hash__(self):
+        return hash(str(self))
+
+    def __lt__(self, other):
+        return self.sort_key() < other.sort_key()
+
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self['state'])
+        return '<%s %s %s>' % (self.__class__.__name__, self, self['state'])
 
     def __str__(self):
         return self.get('context', '**UNKNOWN**')
-
-    def __hash__(self):
-        return hash(str(self))
 
     @property
     def is_queueable(self):
@@ -89,6 +92,15 @@ class CommitStatus(dict):
         if self.get('description') in {'Skipped', 'Disabled on Jenkins.'}:
             return True
         return False
+
+    _state_order = ['unknown', 'error', 'failure', 'pending', 'success']
+
+    def sort_key(self):
+        return (
+            self._state_order.index(self['state']),
+            self['context'],
+            self.get('updated_at'),
+        )
 
 
 class RepositoriesRegistry(dict):

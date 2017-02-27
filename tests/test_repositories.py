@@ -386,6 +386,20 @@ def test_process_status(mocker):
     yield from commit.maybe_update_status(CommitStatus(context='context'))
 
 
+def test_sort_status():
+    from jenkins_epo.repository import CommitStatus
+
+    error = CommitStatus(context='job1', state='error')
+    failure = CommitStatus(context='job1', state='failure')
+    pending = CommitStatus(context='job1', state='pending')
+    success = CommitStatus(context='job1', state='success')
+
+    assert 'error' in repr(error)
+    assert error < failure
+    assert failure < pending
+    assert pending < success
+
+
 @pytest.mark.asyncio
 @asyncio.coroutine
 def test_update_status(mocker):
