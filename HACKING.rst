@@ -72,7 +72,6 @@ Feel free to contribute :)
 - Test merge commit (pull/XXXX/{head,merge})
 - metrics: build count, total time on Jenkins, cancelled build (how much time
   saved), etc.
-- Pipeline dashboard
 - Command ``install-plugins``. Install plugins on Jenkins
 - Distinct global/per project settings.
 - Command ``settings [head]`` dump settings, jenkins.yml loaded.

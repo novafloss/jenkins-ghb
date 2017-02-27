@@ -17,17 +17,28 @@ import hmac
 import hashlib
 import json
 import logging
+from os.path import realpath as rp, join as j, dirname as dn
 
 from aiohttp import web
+from jenkins_yml.job import Job as JobSpec
+import yaml
 
+from .github import GITHUB, cached_arequest
+from .pipeline import Pipeline
 from .procedures import process_url
-from .repository import REPOSITORIES, Repository, WebHook
+from .repository import CommitStatus, REPOSITORIES, Repository, WebHook
 from .settings import SETTINGS
 from .tasks import ProcessUrlTask
 from .workers import WORKERS, Task
 
 app = web.Application()
 logger = logging.getLogger(__name__)
+
+
+app.router.add_static(
+    '/static/', name='static',
+    path=rp(j(dn(__file__), 'static'))
+)
 
 
 @asyncio.coroutine
@@ -149,6 +160,121 @@ def github_webhook(request):
 
 
 app.router.add_post('/github-webhook', github_webhook, name='github-webhook')
+
+
+@asyncio.coroutine
+def dashboard(request):
+    static = request.app.router['static']
+    return web.Response(content_type="text/html", text="""\
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Jenkins EPO Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="%(style)s" />
+  </head>
+  <body>
+    <div id="main"></div>
+    <script src="%(script)s"></script>
+    <script>main();</script>
+  </body>
+</html>
+""".strip() % dict(
+        script=static.url(filename='dashboard.js'),
+        style=static.url(filename='dashboard.css'),
+    ))
+
+
+app.router.add_get('/dashboard', dashboard, name='dashboard')
+
+
+class PipelineView(web.View):
+    @asyncio.coroutine
+    def statuses_task(self):
+        self.statuses = yield from cached_arequest(
+            GITHUB.repos(self.repository)
+            .commits(self.request.match_info['ref'])
+            .statuses
+        )
+
+    @asyncio.coroutine
+    def stages_task(self):
+        fullref = self.request.match_info['ref']
+        self.payload['ref'] = fullref
+        self.jenkins_yml = yield from GITHUB.fetch_file_contents(
+            self.repository, 'jenkins.yml', ref=fullref
+        )
+
+    @asyncio.coroutine
+    def get(self):
+        self.payload = dict()
+        self.payload['repository'] = r = dict(
+            owner=self.request.match_info['owner'],
+            name=self.request.match_info['repository'],
+        )
+        self.repository = '%(owner)s/%(name)s' % self.payload['repository']
+        loop = asyncio.get_event_loop()
+        tasks = [
+            loop.create_task(self.statuses_task()),
+            loop.create_task(self.stages_task()),
+        ]
+        yield from asyncio.gather(*tasks)
+        jenkins_yml = yaml.load(self.jenkins_yml)
+        settings = jenkins_yml.get('settings', {})
+        stages = settings.get('stages', ['build', 'test', 'deploy'])
+        pipeline = Pipeline.from_yaml(
+            stages, trim_prefixes=[
+                r['owner'], r['owner'].lower(),
+                r['name'], r['name'].lower(),
+            ])
+        pipeline.add_specs(*JobSpec.parse_all(self.jenkins_yml))
+        statuses = [CommitStatus(s) for s in self.statuses]
+        pipeline.process_statuses(*statuses)
+        self.payload['stages'] = pipeline.to_json()
+        return web.json_response(self.payload)
+
+
+app.router.add_route(
+    '*', '/rest/pipeline/{owner}/{repository}/{ref:[^{}]+}',
+    PipelineView, name='pipeline',
+)
+
+
+@asyncio.coroutine
+def heads(request):
+    payload = dict(branches=[], tags=[])
+    repository = yield from Repository.from_name(
+        request.match_info['owner'], request.match_info['name'],
+    )
+    branches = yield from repository.fetch_protected_branches()
+    for branch in branches:
+        payload['branches'].append(dict(
+            name=branch['name'],
+            fullref='refs/heads/' + branch['name'],
+        ))
+
+    return web.json_response(payload)
+
+
+app.router.add_get('/rest/heads/{owner}/{name}/', heads, name='heads')
+
+
+@asyncio.coroutine
+def repositories(request):
+    payload = []
+    for entry in REPOSITORIES:
+        owner, name = entry.split('/')
+        payload.append(dict(
+            owner=owner,
+            name=name,
+        ))
+    payload = sorted(
+        payload,
+        key=lambda d: (d['owner'], d['name'])
+    )
+    return web.json_response(payload)
+
+
+app.router.add_get('/rest/repositories/', repositories, name='repositories')
 
 
 @asyncio.coroutine
