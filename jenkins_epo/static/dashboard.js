@@ -36,10 +36,10 @@ var dashboard = {
     },
 
     get: function(url, callback) {
-        var payload;
         var request = new XMLHttpRequest();
         request.open("GET", url, true);
         request.onreadystatechange = function() {
+            var payload;
             if (4 != this.readyState)
                 return;
 
@@ -211,7 +211,7 @@ var dashboard = {
     },
 
     headsView: function(repository) {
-        this.get("/rest/heads/" + repository + "/", function() {
+        this.get("/rest/heads/" + repository + "/", function(payload) {
             dashboard.context.h1.innerHTML = repository;
             dashboard.context.body.innerHTML = (
                 '<section><h>Protected branches</h><ul id="branches"></ul></section>'
@@ -234,7 +234,7 @@ var dashboard = {
     },
 
     repositoriesView: function() {
-        this.get("/rest/repositories/", function(){
+        this.get("/rest/repositories/", function(payload) {
             dashboard.context.h1.innerHTML = "Repositories";
             dashboard.context.body.innerHTML = '<ul id="repositories"></ul>';
             var reposel = document.getElementById('repositories');
