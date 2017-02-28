@@ -376,7 +376,16 @@ class StagesExtension(JenkinsExtension):
     def run(self):
         pipeline = Pipeline.from_yaml(self.current.SETTINGS.STAGES)
         self.current.pipeline = pipeline
-        pipeline.add_specs(*self.current.job_specs.values())
+        for spec in self.current.job_specs.values():
+            if not spec.config.get('axis'):
+                pipeline.add_specs(spec)
+                continue
+            # Set matrix context as external. This way we ignore other matrix
+            # combination not managed by EPO.
+            stage_name = spec.config.get('stage', pipeline.default_stage)
+            stage = pipeline.stages[stage_name]
+            job = self.current.jobs[spec.name]
+            stage.external_contextes.extend(job.list_contexts(spec))
         pipeline.process_statuses(*self.current.statuses.values())
         stage = None
         for stage in [s for s in pipeline.stages.values() if bool(s)]:
