@@ -87,6 +87,9 @@ var dashboard = {
                 );
             });
         });
+        window.setTimeout(function() {
+            window.location.reload();
+        }, 300 * 1000);
     },
 
     fillStatuses: function(table, payload) {
@@ -180,15 +183,15 @@ var dashboard = {
                 var stage_height = jobs_height * stage.statuses.length;
                 grd = ctx.createLinearGradient(x, y, x, y + stage_height);
                 grd.addColorStop(0, color);
-                grd.addColorStop(radius / stage_height, color);
                 ctx.beginPath();
                 // Draw all bubbles and define global stage gradiant.
                 for (var j = 0; j < stage.statuses.length; j++) {
                     var job = stage.statuses[j];
                     var job_color = colors[job.state];
                     cell = table.rows[j].cells[i];
-                    var stop0 = cell.offsetTop;
-                    var stop1 = cell.offsetTop + cell.offsetHeight - (cell.offsetHeight - circle_height) / 2;
+                    var color_pad = (cell.offsetHeight - circle_height) / 2;
+                    var stop0 = cell.offsetTop + color_pad;
+                    var stop1 = cell.offsetTop + cell.offsetHeight - color_pad;
                     grd.addColorStop(stop0 / stage_height, job_color);
                     grd.addColorStop(Math.min(1, stop1 / stage_height), job_color);
                     ctx.arc(
