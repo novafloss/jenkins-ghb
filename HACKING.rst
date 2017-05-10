@@ -59,6 +59,7 @@ Feel free to contribute :)
 - Detect branch from ``commit_comment`` event.
 - Set custom status context. Create job name with <owner>_<project>_<job>.
   Context with only <job>.
+- Edit status on GitHub.
 - Cancel job on PR close.
 - Skip event on comments not containing ``jenkins:``.
 - Test GraphQL.
@@ -71,7 +72,6 @@ Feel free to contribute :)
 - Test merge commit (pull/XXXX/{head,merge})
 - metrics: build count, total time on Jenkins, cancelled build (how much time
   saved), etc.
-- Pipeline dashboard
 - Command ``install-plugins``. Install plugins on Jenkins
 - Distinct global/per project settings.
 - Command ``settings [head]`` dump settings, jenkins.yml loaded.

@@ -13,13 +13,13 @@
 # jenkins-epo.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-from collections import OrderedDict
 import logging
 
 from aiohttp.errors import HttpProcessingError
 
 from ..bot import Extension, Error, SkipHead
 from ..jenkins import Build, JENKINS, NotOnJenkins, UnknownJob
+from ..pipeline import Pipeline
 from ..repository import Commit, CommitStatus
 from ..utils import log_context, match
 
@@ -365,45 +365,6 @@ class PollExtension(JenkinsExtension):
         yield from asyncio.gather(*tasks)
 
 
-class Stage(object):
-    @classmethod
-    def factory(cls, entry):
-        if isinstance(entry, str):
-            entry = dict(name=entry)
-        return cls(**entry)
-
-    def __init__(self, name, external=None, **kw):
-        self.name = name
-        self.job_specs = []
-        self.external_contextes = external or []
-        self.statuses = []
-
-    def __bool__(self):
-        return bool(self.job_specs or self.external_contextes)
-
-    def __str__(self):
-        return self.name
-
-    def is_complete(self, jobs, statuses):
-        for context in self.external_contextes:
-            state = statuses.get(context, {}).get('state')
-            if state != 'success':
-                logger.debug("Missing context %s for stage %s.", context, self)
-                return False
-
-        for spec in self.job_specs:
-            try:
-                job = jobs[spec.name]
-            except KeyError:
-                continue
-            for context in job.list_contexts(spec):
-                state = statuses.get(context, {}).get('state')
-                if state != 'success':
-                    logger.debug("Missing job %s for stage %s.", spec, self)
-                    return False
-        return True
-
-
 class StagesExtension(JenkinsExtension):
     stage = '10'
 
@@ -413,25 +374,22 @@ class StagesExtension(JenkinsExtension):
 
     @asyncio.coroutine
     def run(self):
-        stages = [Stage.factory(i) for i in self.current.SETTINGS.STAGES]
-        # First, group jobs by stages
-        self.current.stages = stages = OrderedDict(
-            [(s.name, s) for s in stages],
-        )
-        default_stage = 'test' if 'test' in stages else list(stages.keys())[0]
+        pipeline = Pipeline.from_yaml(self.current.SETTINGS.STAGES)
+        self.current.pipeline = pipeline
         for spec in self.current.job_specs.values():
-            if spec.config.get('periodic') and not spec.config.get('stage'):
-                logger.debug("Skipping %s with no explicit stage.", spec)
+            if not spec.config.get('axis'):
+                pipeline.add_specs(spec)
                 continue
-            stage = spec.config.get('stage', default_stage)
-            stages[stage].job_specs.append(spec)
-
+            # Set matrix context as external. This way we ignore other matrix
+            # combination not managed by EPO.
+            stage_name = spec.config.get('stage', pipeline.default_stage)
+            stage = pipeline.stages[stage_name]
+            job = self.current.jobs[spec.name]
+            stage.external_contextes.extend(job.list_contexts(spec))
+        pipeline.process_statuses(*self.current.statuses.values())
         stage = None
-        # Search current stage to build.
-        for stage in [s for s in stages.values() if bool(s)]:
-            complete = stage.is_complete(
-                self.current.jobs, self.current.statuses
-            )
+        for stage in [s for s in pipeline.stages.values() if bool(s)]:
+            complete = stage.state == 'success'
             if not complete:
                 break
 
@@ -443,7 +401,7 @@ class StagesExtension(JenkinsExtension):
         # Filter job specs to the current stage ones.
         current_ref = self.current.head.ref
         self.current.job_specs = {}
-        for spec in stage.job_specs:
+        for spec in stage.jobs:
             branches = spec.config.get('branches', ['*'])
             if not isinstance(branches, list):
                 branches = [branches]
